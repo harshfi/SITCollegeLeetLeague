@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Class } from '@/lib/types';
+import { AdminShell } from '@/components/admin/AdminShell';
 
 export default function AdminClassesPage() {
   const [classes, setClasses] = useState<Class[]>([]);
@@ -85,10 +86,15 @@ export default function AdminClassesPage() {
   }
 
   if (loading) {
-    return <div className="text-center text-muted-foreground">Loading...</div>;
+    return (
+      <AdminShell>
+        <div className="text-center text-muted-foreground">Loading...</div>
+      </AdminShell>
+    );
   }
 
   return (
+    <AdminShell>
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Manage Classes</h1>
@@ -177,5 +183,6 @@ export default function AdminClassesPage() {
         </Card>
       )}
     </div>
+    </AdminShell>
   );
 }

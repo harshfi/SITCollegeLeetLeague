@@ -6,6 +6,26 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** YYYY-MM-DD for the given instant, in IST (UTC+5:30). */
+export function istDateKey(date: Date = new Date()): string {
+  return new Date(date.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** IST date key for `n` days before `from`. */
+export function istDateKeyDaysAgo(n: number, from: Date = new Date()): string {
+  return istDateKey(new Date(from.getTime() - n * DAY_MS));
+}
+
+/** The YYYY-MM-DD key for the day before the given key. */
+export function prevDateKey(key: string): string {
+  return new Date(new Date(`${key}T00:00:00Z`).getTime() - DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
 export function formatLastFetched(date: Date): string {
   return formatDistanceToNow(new Date(date), { addSuffix: true });
 }

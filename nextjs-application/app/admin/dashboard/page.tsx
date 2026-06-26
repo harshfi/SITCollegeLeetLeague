@@ -4,6 +4,7 @@ import * as studentService from '@/lib/services/studentService';
 import { Card, CardContent } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { RefreshButton } from '@/components/admin/RefreshButton';
+import { AdminShell } from '@/components/admin/AdminShell';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,8 @@ export default async function AdminDashboard() {
     classes.length > 0 ? (students.length / classes.length).toFixed(1) : '0';
 
   return (
-    <div className="space-y-8">
+    <AdminShell>
+      <div className="space-y-8">
       <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
 
       {/* Stats Overview */}
@@ -83,6 +85,7 @@ export default async function AdminDashboard() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </AdminShell>
   );
 }

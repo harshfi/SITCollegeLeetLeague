@@ -49,13 +49,32 @@ export interface StudentStats {
   // Badges
   badgeCount: number;
 
-  // Today's progress
+  // Today's progress (submissions on the current UTC day, from the calendar)
   solvedToday: number;
+
+  // Profile
+  userAvatar: string | null;
+  realName: string | null;
 
   // Fetch metadata
   lastFetchedAt: Date;
   lastFetchError: string | null;
   fetchStatus: 'ok' | 'error' | 'pending';
+}
+
+/**
+ * A point-in-time capture of a student's solved totals for a given day.
+ * Used to compute "Today" / "This Week" / per-date deltas accurately.
+ * Doc id: `${leetcodeUsername}_${date}` where date is an IST YYYY-MM-DD key.
+ */
+export interface DailySnapshot {
+  leetcodeUsername: string;
+  date: string; // IST YYYY-MM-DD
+  totalSolved: number;
+  easySolved: number;
+  mediumSolved: number;
+  hardSolved: number;
+  capturedAt: Date;
 }
 
 export interface RefreshJob {
@@ -156,4 +175,48 @@ export interface LeetCodeContestRanking {
 export interface AllQuestionsCount {
   difficulty: string;
   count: number;
+}
+
+// Leaderboard / dashboard types
+
+export type TimeWindow = 'all' | 'today' | 'week' | 'date';
+
+export interface LeaderboardRow {
+  studentId: string;
+  name: string;
+  leetcodeUsername: string;
+  classId: string;
+  className: string;
+  userAvatar: string | null;
+  // Counts for the selected window
+  easy: number;
+  medium: number;
+  hard: number;
+  total: number;
+  // Always all-time / latest, shown as supporting columns
+  streak: number;
+  rating: number;
+  ranking: number;
+  hasStats: boolean;
+}
+
+export interface InstituteSummary {
+  classId: string;
+  name: string;
+  memberCount: number;
+  allTime: number;
+  today: number;
+  week: number;
+}
+
+export interface LeaderboardData {
+  window: TimeWindow;
+  date: string | null; // for window === 'date'
+  generatedAt: string;
+  totalStudents: number;
+  problemsSolved: number; // sum of total for the window
+  todaysSolves: number; // sum of today across all students
+  mostActive: { name: string; count: number } | null;
+  rows: LeaderboardRow[];
+  institutes: InstituteSummary[];
 }

@@ -1,0 +1,309 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { LeaderboardData, LeaderboardRow, TimeWindow } from '@/lib/types';
+import { Input } from '@/components/ui/input';
+import { Avatar } from './Avatar';
+import { Podium } from './Podium';
+import { InstituteVs } from './InstituteVs';
+import { StudentModal } from './StudentModal';
+import { AdminLockButton } from './AdminLockButton';
+import { istDateKey } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+
+const TABS: { key: TimeWindow; label: string }[] = [
+  { key: 'all', label: 'All Time' },
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: 'This Week' },
+  { key: 'date', label: 'Date' },
+];
+
+function StatCard({
+  icon,
+  label,
+  children,
+}: {
+  icon: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl bg-card px-5 py-4 ring-1 ring-foreground/10">
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <span>{icon}</span>
+        {label}
+      </div>
+      <div className="mt-2 text-2xl font-bold">{children}</div>
+    </div>
+  );
+}
+
+export function Dashboard({ initial }: { initial: LeaderboardData }) {
+  const [windowSel, setWindowSel] = useState<TimeWindow>(initial.window);
+  const [dateSel, setDateSel] = useState<string>(initial.date || istDateKey());
+  const [data, setData] = useState<LeaderboardData>(initial);
+  const [loading, setLoading] = useState(false);
+  const [classFilter, setClassFilter] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<LeaderboardRow | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      setLoading(true);
+      try {
+        const qs = new URLSearchParams({ window: windowSel });
+        if (windowSel === 'date') qs.set('date', dateSel);
+        const res = await fetch(`/api/leaderboard?${qs.toString()}`, {
+          signal: controller.signal,
+        });
+        if (res.ok) setData(await res.json());
+      } catch {
+        // ignore aborts / transient errors
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+    return () => controller.abort();
+  }, [windowSel, dateSel]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return data.rows.filter((r) => {
+      if (classFilter !== 'all' && r.classId !== classFilter) return false;
+      if (q && !`${r.name} ${r.leetcodeUsername}`.toLowerCase().includes(q))
+        return false;
+      return true;
+    });
+  }, [data.rows, classFilter, search]);
+
+  const timestamp = useMemo(() => {
+    try {
+      return new Date(data.generatedAt).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return '';
+    }
+  }, [data.generatedAt]);
+
+  return (
+    <div className="min-h-full">
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold tracking-tight">
+              <span className="text-primary">Leet</span>Code Tracker
+            </h1>
+            <span className="flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              {timestamp} IST
+            </span>
+          </div>
+          <nav className="flex items-center gap-1">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setWindowSel(t.key)}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
+                  windowSel === t.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+            {windowSel === 'date' && (
+              <input
+                type="date"
+                value={dateSel}
+                max={istDateKey()}
+                onChange={(e) => setDateSel(e.target.value)}
+                className="ml-1 rounded-lg border border-input bg-transparent px-2 py-1 text-sm outline-none focus-visible:border-ring"
+              />
+            )}
+          </nav>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard icon="👥" label="Total Students">
+            {data.totalStudents}
+          </StatCard>
+          <StatCard icon="</>" label="Problems Solved">
+            {data.problemsSolved.toLocaleString()}
+          </StatCard>
+          <StatCard icon="📈" label="Today's Solves">
+            {data.todaysSolves.toLocaleString()}
+          </StatCard>
+          <StatCard icon="🔥" label="Most Active">
+            {data.mostActive ? (
+              <span className="text-lg">
+                {data.mostActive.name}{' '}
+                <span className="text-sm font-semibold text-green-600">
+                  +{data.mostActive.count}
+                </span>
+              </span>
+            ) : (
+              <span className="text-lg text-muted-foreground">—</span>
+            )}
+          </StatCard>
+        </div>
+
+        {/* Podium */}
+        <Podium rows={data.rows} onSelect={setSelected} />
+
+        {/* Institute VS */}
+        <InstituteVs institutes={data.institutes} />
+
+        {/* Leaderboard */}
+        <div className="rounded-xl bg-card ring-1 ring-foreground/10">
+          <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-1">
+              <FilterTab
+                label="All"
+                active={classFilter === 'all'}
+                onClick={() => setClassFilter('all')}
+              />
+              {data.institutes.map((inst) => (
+                <FilterTab
+                  key={inst.classId}
+                  label={inst.name}
+                  active={classFilter === inst.classId}
+                  onClick={() => setClassFilter(inst.classId)}
+                />
+              ))}
+            </div>
+            <div className="sm:w-64">
+              <Input
+                placeholder="Search students…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left font-medium">#</th>
+                  <th className="px-4 py-3 text-left font-medium">Student</th>
+                  <th className="px-4 py-3 text-center font-medium">Easy</th>
+                  <th className="px-4 py-3 text-center font-medium">Med</th>
+                  <th className="px-4 py-3 text-center font-medium">Hard</th>
+                  <th className="px-4 py-3 text-center font-medium">Total</th>
+                  <th className="px-4 py-3 text-center font-medium">Streak</th>
+                  <th className="px-4 py-3 text-center font-medium">Rating</th>
+                  <th className="px-4 py-3 text-right font-medium">LC Rank</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      className="px-4 py-10 text-center text-muted-foreground"
+                    >
+                      {loading ? 'Loading…' : 'No students match.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((row, idx) => (
+                    <tr
+                      key={row.studentId}
+                      onClick={() => setSelected(row)}
+                      className="cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/50"
+                    >
+                      <td className="px-4 py-3 text-muted-foreground tabular-nums">
+                        {idx + 1}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            src={row.userAvatar}
+                            name={row.name}
+                            className="h-8 w-8 text-xs"
+                          />
+                          <div>
+                            <div className="font-medium leading-tight">
+                              {row.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {row.className}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center text-green-600 tabular-nums">
+                        {row.easy}
+                      </td>
+                      <td className="px-4 py-3 text-center text-amber-600 tabular-nums">
+                        {row.medium}
+                      </td>
+                      <td className="px-4 py-3 text-center text-red-600 tabular-nums">
+                        {row.hard}
+                      </td>
+                      <td className="px-4 py-3 text-center font-semibold tabular-nums">
+                        {row.total}
+                      </td>
+                      <td className="px-4 py-3 text-center tabular-nums">
+                        {row.streak > 0 ? `${row.streak}🔥` : '0'}
+                      </td>
+                      <td className="px-4 py-3 text-center tabular-nums">
+                        {row.rating || 0}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground tabular-nums">
+                        {(row.ranking || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
+      {selected && (
+        <StudentModal row={selected} onClose={() => setSelected(null)} />
+      )}
+      <AdminLockButton />
+    </div>
+  );
+}
+
+function FilterTab({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'rounded-full px-3 py-1.5 text-sm font-medium uppercase tracking-wide transition-colors',
+        active
+          ? 'bg-primary text-primary-foreground'
+          : 'text-muted-foreground hover:text-foreground'
+      )}
+    >
+      {label}
+    </button>
+  );
+}

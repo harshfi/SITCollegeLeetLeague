@@ -19,6 +19,20 @@ export async function getStats(
   } as StudentStats;
 }
 
+/** Returns a map of leetcodeUsername → latest stats for all tracked users. */
+export async function getAllStats(): Promise<Map<string, StudentStats>> {
+  const result = new Map<string, StudentStats>();
+  const snapshot = await statsRef().get();
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    result.set(doc.id, {
+      ...data,
+      lastFetchedAt: data.lastFetchedAt?.toDate() || new Date(),
+    } as StudentStats);
+  }
+  return result;
+}
+
 export async function upsertStats(
   leetcodeUsername: string,
   stats: Partial<StudentStats>,

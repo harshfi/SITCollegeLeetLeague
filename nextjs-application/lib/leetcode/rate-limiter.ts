@@ -27,7 +27,8 @@ async function fetchWithTimeout(
 }
 
 export async function fetchMultipleUsersWithRateLimit(
-  usernames: string[]
+  usernames: string[],
+  onResult?: (result: FetchResult) => void | Promise<void>
 ): Promise<FetchResult[]> {
   const limit = pLimit(BATCH_SIZE);
   const results: FetchResult[] = [];
@@ -43,17 +44,20 @@ export async function fetchMultipleUsersWithRateLimit(
     // Process this batch concurrently
     const batchPromises = batch.map((username) =>
       limit(async () => {
+        let result: FetchResult;
         try {
           const stats = await fetchWithTimeout(
             username,
             PER_STUDENT_TIMEOUT_MS
           );
-          return { username, stats };
+          result = { username, stats };
         } catch (error) {
           const errorMsg =
             error instanceof Error ? error.message : 'Unknown error';
-          return { username, error: errorMsg };
+          result = { username, error: errorMsg };
         }
+        if (onResult) await onResult(result);
+        return result;
       })
     );
 

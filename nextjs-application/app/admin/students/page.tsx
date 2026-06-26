@@ -21,6 +21,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Student, Class } from '@/lib/types';
+import { AdminShell } from '@/components/admin/AdminShell';
+import { CsvImport } from '@/components/admin/CsvImport';
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -37,20 +39,24 @@ export default function AdminStudentsPage() {
   const [saving, setSaving] = useState(false);
   const [filterClassId, setFilterClassId] = useState('all');
 
+  async function reloadData() {
+    try {
+      const [studentsData, classesData] = await Promise.all([
+        fetch('/api/students').then((r) => r.json()),
+        fetch('/api/classes').then((r) => r.json()),
+      ]);
+      setStudents(studentsData);
+      setClasses(classesData);
+    } catch {
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    Promise.all([
-      fetch('/api/students').then((r) => r.json()),
-      fetch('/api/classes').then((r) => r.json()),
-    ])
-      .then(([studentsData, classesData]) => {
-        setStudents(studentsData);
-        setClasses(classesData);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Failed to load data');
-        setLoading(false);
-      });
+    reloadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleCreateStudent(e: React.FormEvent) {
@@ -108,16 +114,24 @@ export default function AdminStudentsPage() {
       : students;
 
   if (loading) {
-    return <div className="text-center text-muted-foreground">Loading...</div>;
+    return (
+      <AdminShell>
+        <div className="text-center text-muted-foreground">Loading...</div>
+      </AdminShell>
+    );
   }
 
   return (
+    <AdminShell>
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Manage Students</h1>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Cancel' : 'Add Student'}
-        </Button>
+        <div className="flex gap-2">
+          <CsvImport classes={classes} onImported={reloadData} />
+          <Button onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Cancel' : 'Add Student'}
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -280,5 +294,6 @@ export default function AdminStudentsPage() {
         </>
       )}
     </div>
+    </AdminShell>
   );
 }
