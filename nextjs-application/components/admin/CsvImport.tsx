@@ -14,6 +14,7 @@ import { Class } from '@/lib/types';
 
 interface BulkResult {
   created: number;
+  createdClasses: string[];
   failed: { line: number; value: string; error: string }[];
 }
 
@@ -89,9 +90,14 @@ export function CsvImport({
             </div>
 
             <p className="text-sm text-muted-foreground">
-              Columns: <code>name, username, rollNumber, class</code>. A header
-              row is optional. <code>rollNumber</code> and <code>class</code> are
-              optional — rows without a <code>class</code> use the default below.
+              Columns (any order, header optional):{' '}
+              <code>name, username, rollNumber, class</code>.{' '}
+              <code>name</code> and <code>username</code> are required — rows
+              missing either are skipped. A <code>class</code> that doesn&apos;t
+              exist yet is created automatically; rows without a class column use
+              the default below. The username may be a handle or a full profile
+              URL (e.g. <code>leetcode.com/u/jdoe</code>) — it&apos;s cleaned
+              automatically.
             </p>
 
             <div className="space-y-2">
@@ -140,6 +146,13 @@ export function CsvImport({
                   ✓ Imported {result.created} student
                   {result.created !== 1 ? 's' : ''}
                 </p>
+                {result.createdClasses.length > 0 && (
+                  <p className="text-muted-foreground">
+                    Created {result.createdClasses.length} new class
+                    {result.createdClasses.length !== 1 ? 'es' : ''}:{' '}
+                    {result.createdClasses.join(', ')}
+                  </p>
+                )}
                 {result.failed.length > 0 && (
                   <div>
                     <p className="text-destructive font-medium">

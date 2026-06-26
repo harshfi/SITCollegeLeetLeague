@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as studentService from '@/lib/services/studentService';
 import * as classService from '@/lib/services/classService';
 import { verifyAdminSession } from '@/lib/auth';
+import { normalizeLeetCodeUsername } from '@/lib/utils';
 import { ApiError } from '@/lib/types';
 
 interface BulkResult {
   created: number;
+  createdClasses: string[];
   failed: { line: number; value: string; error: string }[];
 }
 
@@ -101,17 +103,33 @@ export async function POST(
       classes.map((c) => [c.name.trim().toLowerCase(), c.id])
     );
 
-    const result: BulkResult = { created: 0, failed: [] };
+    const result: BulkResult = { created: 0, createdClasses: [], failed: [] };
     let line = looksLikeHeader ? 2 : 1;
 
     for (const r of dataRows) {
       const name = (r[nameIdx] || '').trim();
-      const username = (r[userIdx] || '').trim();
+      const username = normalizeLeetCodeUsername(r[userIdx] || '');
       const rollNumber = rollIdx >= 0 ? (r[rollIdx] || '').trim() : '';
       const classCell = classIdx >= 0 ? (r[classIdx] || '').trim() : '';
-      const classId = classCell
-        ? classIdByName.get(classCell.toLowerCase()) || ''
-        : body.defaultClassId || '';
+
+      // Resolve the class by name, auto-creating it if it doesn't exist yet.
+      let classId = '';
+      if (classCell) {
+        const key = classCell.toLowerCase();
+        classId = classIdByName.get(key) || '';
+        if (!classId) {
+          try {
+            const created = await classService.createClass({ name: classCell });
+            classId = created.id;
+            classIdByName.set(key, classId);
+            result.createdClasses.push(classCell);
+          } catch {
+            // leave classId empty → the row is reported as failed below
+          }
+        }
+      } else {
+        classId = body.defaultClassId || '';
+      }
 
       const rowLabel = `${name || '?'} (${username || '?'})`;
 

@@ -5,6 +5,7 @@ import {
   UpdateStudentRequest,
 } from '@/lib/types';
 import * as classService from '@/lib/services/classService';
+import { normalizeLeetCodeUsername } from '@/lib/utils';
 
 const studentsRef = () => db.collection('students');
 
@@ -74,6 +75,7 @@ export async function createStudent(req: CreateStudentRequest): Promise<Student>
 
   const docRef = await studentsRef().add({
     ...req,
+    leetcodeUsername: normalizeLeetCodeUsername(req.leetcodeUsername),
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -112,6 +114,9 @@ export async function updateStudent(
 
   await studentsRef().doc(studentId).update({
     ...req,
+    ...(req.leetcodeUsername
+      ? { leetcodeUsername: normalizeLeetCodeUsername(req.leetcodeUsername) }
+      : {}),
     updatedAt: new Date(),
   });
 

@@ -6,6 +6,41 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Extracts a bare LeetCode username from whatever a user pastes:
+ *   - "username"
+ *   - "@username"
+ *   - "leetcode.com/u/username", "https://leetcode.com/u/username/"
+ *   - "https://leetcode.com/username/" (legacy profile path)
+ *   - "leetcode.cn/u/username", links with query/hash, surrounding spaces
+ */
+export function normalizeLeetCodeUsername(raw: string): string {
+  let s = (raw || '').trim().replace(/^@+/, '');
+  if (!s) return '';
+
+  const looksLikeUrl = /leetcode\.(com|cn)/i.test(s) || s.includes('/');
+  if (looksLikeUrl) {
+    const withProtocol = /^https?:\/\//i.test(s) ? s : `https://${s}`;
+    let segments: string[];
+    try {
+      segments = new URL(withProtocol).pathname.split('/').filter(Boolean);
+    } catch {
+      segments = s.split('/').filter(Boolean);
+    }
+    const uIdx = segments.indexOf('u');
+    if (uIdx >= 0 && segments[uIdx + 1]) {
+      s = segments[uIdx + 1];
+    } else if (segments.length > 0) {
+      // legacy "leetcode.com/<username>" → last non-domain segment
+      s = segments[segments.length - 1];
+    }
+  }
+
+  // Strip any leftover query/hash and stray symbols.
+  s = s.split('?')[0].split('#')[0].trim().replace(/^@+/, '');
+  return s;
+}
+
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 

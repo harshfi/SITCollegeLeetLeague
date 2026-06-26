@@ -142,10 +142,10 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
             {data.totalStudents}
           </StatCard>
           <StatCard icon="</>" label="Problems Solved">
-            {data.problemsSolved.toLocaleString()}
+            {(data.problemsSolved || 0).toLocaleString()}
           </StatCard>
           <StatCard icon="📈" label="Today's Solves">
-            {data.todaysSolves.toLocaleString()}
+            {(data.todaysSolves || 0).toLocaleString()}
           </StatCard>
           <StatCard icon="🔥" label="Most Active">
             {data.mostActive ? (
