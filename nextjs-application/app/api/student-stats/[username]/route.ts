@@ -9,11 +9,12 @@ interface RouteParams {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse<StudentStatsResponse | ApiError>> {
   try {
     const { username } = await params;
+    const force = request.nextUrl.searchParams.get('force') === 'true';
 
     // Try to get from cache first
     let stats = await statsService.getStats(username);
@@ -23,7 +24,7 @@ export async function GET(
       statsService.STALE_THRESHOLDS.general
     );
 
-    if (!stats || isStale) {
+    if (!stats || isStale || force) {
       // Fetch from LeetCode
       try {
         const freshStats = await fetchLeetCodeStats(username);

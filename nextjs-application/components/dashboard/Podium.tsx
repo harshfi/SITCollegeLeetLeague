@@ -11,12 +11,14 @@ function PodiumCard({
   rank,
   icon,
   highlight,
+  showBreakdown,
   onSelect,
 }: {
   row: LeaderboardRow;
   rank: number;
   icon: string;
   highlight: boolean;
+  showBreakdown: boolean;
   onSelect: (r: LeaderboardRow) => void;
 }) {
   return (
@@ -38,17 +40,19 @@ function PodiumCard({
         {row.className}
       </div>
       <div className="mt-2 text-3xl font-bold">{row.total}</div>
-      <div className="mt-2 flex gap-1.5 text-xs">
-        <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700">
-          {row.easy}
-        </span>
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">
-          {row.medium}
-        </span>
-        <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">
-          {row.hard}
-        </span>
-      </div>
+      {showBreakdown && (
+        <div className="mt-2 flex gap-1.5 text-xs">
+          <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700">
+            {row.easy}
+          </span>
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">
+            {row.medium}
+          </span>
+          <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">
+            {row.hard}
+          </span>
+        </div>
+      )}
       <span className="sr-only">Rank {rank}</span>
     </button>
   );
@@ -57,9 +61,11 @@ function PodiumCard({
 export function Podium({
   rows,
   onSelect,
+  showBreakdown,
 }: {
   rows: LeaderboardRow[];
   onSelect: (r: LeaderboardRow) => void;
+  showBreakdown: boolean;
 }) {
   const top3 = rows.slice(0, 3);
   if (top3.length === 0) return null;
@@ -78,6 +84,7 @@ export function Podium({
             rank={ranks[i]}
             icon={ICONS[i]}
             highlight={ranks[i] === 1}
+            showBreakdown={showBreakdown}
             onSelect={onSelect}
           />
         ) : null

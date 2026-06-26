@@ -49,8 +49,12 @@ export interface StudentStats {
   // Badges
   badgeCount: number;
 
-  // Today's progress (submissions on the current UTC day, from the calendar)
+  // Today's progress (solves on the current IST day, from the calendar)
   solvedToday: number;
+
+  // Per-day solve counts keyed by IST date (YYYY-MM-DD), from LeetCode's
+  // submission calendar. Powers the Today / This Week / Date windows.
+  submissionCalendar?: Record<string, number>;
 
   // Profile
   userAvatar: string | null;

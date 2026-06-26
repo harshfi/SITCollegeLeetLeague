@@ -79,22 +79,40 @@ function istDayIndex(unixSeconds: number): number {
   return Math.floor((unixSeconds + IST_OFFSET_SECONDS) / DAY_SECONDS);
 }
 
-/** Parse one or more submissionCalendar JSON strings into a day-index → count map. */
-function parseCalendar(...calendarJsons: (string | undefined)[]): Map<number, number> {
+/** IST date key (YYYY-MM-DD) for a unix-seconds timestamp. */
+function istDateStringFromSec(unixSeconds: number): string {
+  return new Date((unixSeconds + IST_OFFSET_SECONDS) * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
+ * Parse one or more submissionCalendar JSON strings into:
+ *  - byDay:  day-index → count   (for streak math)
+ *  - byDate: 'YYYY-MM-DD' → count (stored, for Today/Week/Date windows)
+ */
+function parseCalendar(...calendarJsons: (string | undefined)[]): {
+  byDay: Map<number, number>;
+  byDate: Record<string, number>;
+} {
   const byDay = new Map<number, number>();
+  const byDate: Record<string, number> = {};
   for (const json of calendarJsons) {
     if (!json) continue;
     try {
       const calendar = JSON.parse(json) as Record<string, number>;
       for (const [tsStr, count] of Object.entries(calendar)) {
-        const day = istDayIndex(Number(tsStr));
-        byDay.set(day, (byDay.get(day) || 0) + (count || 0));
+        const sec = Number(tsStr);
+        const c = count || 0;
+        byDay.set(istDayIndex(sec), (byDay.get(istDayIndex(sec)) || 0) + c);
+        const key = istDateStringFromSec(sec);
+        byDate[key] = (byDate[key] || 0) + c;
       }
     } catch {
       // ignore malformed calendar
     }
   }
-  return byDay;
+  return { byDay, byDate };
 }
 
 /**
@@ -186,8 +204,8 @@ export async function fetchLeetCodeStats(
 
   const badgeCount = user.badges?.length || 0;
 
-  // Streaks + today's submissions from the merged calendar
-  const byDay = parseCalendar(
+  // Streaks + today's solves from the merged calendar
+  const { byDay, byDate } = parseCalendar(
     user.calendarCurrent?.submissionCalendar,
     user.calendarPrev?.submissionCalendar
   );
@@ -239,6 +257,7 @@ export async function fetchLeetCodeStats(
     globalContestRanking: contestData.globalRanking || 0,
     badgeCount,
     solvedToday,
+    submissionCalendar: byDate,
     userAvatar: user.profile?.userAvatar || null,
     realName: user.profile?.realName || null,
     lastFetchedAt: new Date(),

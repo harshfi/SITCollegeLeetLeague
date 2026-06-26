@@ -99,13 +99,21 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
     });
   }, [data.rows, classFilter, search]);
 
+  // Easy/Med/Hard are per-difficulty all-time numbers — only meaningful in the
+  // All-Time tab. Windowed tabs show window totals only.
+  const showBreakdown = data.window === 'all';
+
   const sorted = useMemo(() => {
     const dir = sortDir === 'asc' ? 1 : -1;
+    const key =
+      !showBreakdown && ['easy', 'medium', 'hard'].includes(sortKey)
+        ? 'total'
+        : sortKey;
     return [...filtered].sort((a, b) => {
-      if (sortKey === 'name') return a.name.localeCompare(b.name) * dir;
-      return ((a[sortKey] as number) - (b[sortKey] as number)) * dir;
+      if (key === 'name') return a.name.localeCompare(b.name) * dir;
+      return ((a[key] as number) - (b[key] as number)) * dir;
     });
-  }, [filtered, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir, showBreakdown]);
 
   const timestamp = useMemo(() => {
     try {
@@ -191,7 +199,7 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
         </div>
 
         {/* Podium */}
-        <Podium rows={data.rows} onSelect={setSelected} />
+        <Podium rows={data.rows} onSelect={setSelected} showBreakdown={showBreakdown} />
 
         {/* Institute VS */}
         <InstituteVs institutes={data.institutes} />
@@ -229,9 +237,13 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
                 <tr className="border-b border-border">
                   <th className="px-4 py-3 text-left font-medium">#</th>
                   <SortHeader label="Student" sortKey="name" align="left" active={sortKey} dir={sortDir} onSort={handleSort} />
-                  <SortHeader label="Easy" sortKey="easy" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
-                  <SortHeader label="Med" sortKey="medium" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
-                  <SortHeader label="Hard" sortKey="hard" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  {showBreakdown && (
+                    <>
+                      <SortHeader label="Easy" sortKey="easy" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                      <SortHeader label="Med" sortKey="medium" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                      <SortHeader label="Hard" sortKey="hard" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                    </>
+                  )}
                   <SortHeader label="Total" sortKey="total" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
                   <SortHeader label="Streak" sortKey="streak" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
                   <SortHeader label="Rating" sortKey="rating" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
@@ -242,7 +254,7 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
                 {sorted.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={showBreakdown ? 9 : 6}
                       className="px-4 py-10 text-center text-muted-foreground"
                     >
                       {loading ? 'Loading…' : 'No students match.'}
@@ -275,15 +287,19 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-center text-green-600 tabular-nums">
-                        {row.easy}
-                      </td>
-                      <td className="px-4 py-3 text-center text-amber-600 tabular-nums">
-                        {row.medium}
-                      </td>
-                      <td className="px-4 py-3 text-center text-red-600 tabular-nums">
-                        {row.hard}
-                      </td>
+                      {showBreakdown && (
+                        <>
+                          <td className="px-4 py-3 text-center text-green-600 tabular-nums">
+                            {row.easy}
+                          </td>
+                          <td className="px-4 py-3 text-center text-amber-600 tabular-nums">
+                            {row.medium}
+                          </td>
+                          <td className="px-4 py-3 text-center text-red-600 tabular-nums">
+                            {row.hard}
+                          </td>
+                        </>
+                      )}
                       <td className="px-4 py-3 text-center font-semibold tabular-nums">
                         {row.total}
                       </td>

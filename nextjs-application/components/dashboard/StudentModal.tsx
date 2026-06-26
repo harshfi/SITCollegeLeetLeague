@@ -93,7 +93,7 @@ export function StudentModal({
           <div className="mt-5 space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <Stat label="Total" value={stats.totalSolved} />
-              <Stat label="Rating" value={stats.rating || 0} />
+              <Stat label="Rating" value={Math.round(stats.contestRating || 0)} />
               <Stat label="LC Rank" value={(stats.ranking || 0).toLocaleString()} />
             </div>
 
