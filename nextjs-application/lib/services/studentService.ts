@@ -73,9 +73,18 @@ export async function createStudent(req: CreateStudentRequest): Promise<Student>
     throw new Error(`Class ${req.classId} not found`);
   }
 
+  const leetcodeUsername = normalizeLeetCodeUsername(req.leetcodeUsername);
+
+  // Enforce one student per LeetCode username so imports/manual adds can't
+  // create duplicates (and re-running an import is safe).
+  const duplicate = await getStudentByUsername(leetcodeUsername);
+  if (duplicate) {
+    throw new Error(`Username "${leetcodeUsername}" already exists`);
+  }
+
   const docRef = await studentsRef().add({
     ...req,
-    leetcodeUsername: normalizeLeetCodeUsername(req.leetcodeUsername),
+    leetcodeUsername,
     createdAt: new Date(),
     updatedAt: new Date(),
   });

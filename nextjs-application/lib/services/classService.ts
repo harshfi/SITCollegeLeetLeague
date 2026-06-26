@@ -60,6 +60,22 @@ export async function updateClass(
 }
 
 export async function deleteClass(classId: string): Promise<void> {
+  // Cascade: remove all students belonging to this class, then the class itself.
+  // (Batched in chunks to stay under Firestore's 500-op batch limit.)
+  const studentsSnap = await db
+    .collection('students')
+    .where('classId', '==', classId)
+    .get();
+
+  const docs = studentsSnap.docs;
+  for (let i = 0; i < docs.length; i += 450) {
+    const batch = db.batch();
+    for (const doc of docs.slice(i, i + 450)) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
+  }
+
   await classesRef().doc(classId).delete();
 }
 

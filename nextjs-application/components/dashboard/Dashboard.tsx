@@ -18,6 +18,16 @@ const TABS: { key: TimeWindow; label: string }[] = [
   { key: 'date', label: 'Date' },
 ];
 
+type SortKey =
+  | 'name'
+  | 'easy'
+  | 'medium'
+  | 'hard'
+  | 'total'
+  | 'streak'
+  | 'rating'
+  | 'ranking';
+
 function StatCard({
   icon,
   label,
@@ -46,6 +56,17 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
   const [classFilter, setClassFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<LeaderboardRow | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('total');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'name' ? 'asc' : 'desc');
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -77,6 +98,14 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
       return true;
     });
   }, [data.rows, classFilter, search]);
+
+  const sorted = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (sortKey === 'name') return a.name.localeCompare(b.name) * dir;
+      return ((a[sortKey] as number) - (b[sortKey] as number)) * dir;
+    });
+  }, [filtered, sortKey, sortDir]);
 
   const timestamp = useMemo(() => {
     try {
@@ -199,18 +228,18 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
               <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                 <tr className="border-b border-border">
                   <th className="px-4 py-3 text-left font-medium">#</th>
-                  <th className="px-4 py-3 text-left font-medium">Student</th>
-                  <th className="px-4 py-3 text-center font-medium">Easy</th>
-                  <th className="px-4 py-3 text-center font-medium">Med</th>
-                  <th className="px-4 py-3 text-center font-medium">Hard</th>
-                  <th className="px-4 py-3 text-center font-medium">Total</th>
-                  <th className="px-4 py-3 text-center font-medium">Streak</th>
-                  <th className="px-4 py-3 text-center font-medium">Rating</th>
-                  <th className="px-4 py-3 text-right font-medium">LC Rank</th>
+                  <SortHeader label="Student" sortKey="name" align="left" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHeader label="Easy" sortKey="easy" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHeader label="Med" sortKey="medium" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHeader label="Hard" sortKey="hard" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHeader label="Total" sortKey="total" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHeader label="Streak" sortKey="streak" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHeader label="Rating" sortKey="rating" align="center" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHeader label="LC Rank" sortKey="ranking" align="right" active={sortKey} dir={sortDir} onSort={handleSort} />
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {sorted.length === 0 ? (
                   <tr>
                     <td
                       colSpan={9}
@@ -220,7 +249,7 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((row, idx) => (
+                  sorted.map((row, idx) => (
                     <tr
                       key={row.studentId}
                       onClick={() => setSelected(row)}
@@ -281,6 +310,56 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
       )}
       <AdminLockButton />
     </div>
+  );
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  align,
+  active,
+  dir,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  align: 'left' | 'center' | 'right';
+  active: SortKey;
+  dir: 'asc' | 'desc';
+  onSort: (key: SortKey) => void;
+}) {
+  const isActive = active === sortKey;
+  const justify =
+    align === 'left'
+      ? 'justify-start'
+      : align === 'right'
+        ? 'justify-end'
+        : 'justify-center';
+  return (
+    <th
+      className={cn(
+        'px-4 py-3 font-medium',
+        align === 'left'
+          ? 'text-left'
+          : align === 'right'
+            ? 'text-right'
+            : 'text-center'
+      )}
+    >
+      <button
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          'inline-flex items-center gap-1 uppercase tracking-wide transition-colors hover:text-foreground',
+          justify,
+          isActive && 'text-foreground'
+        )}
+      >
+        {label}
+        <span className="text-[10px]">
+          {isActive ? (dir === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
   );
 }
 
