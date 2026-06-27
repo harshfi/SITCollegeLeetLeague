@@ -55,7 +55,7 @@ function parseCsv(text: string): string[][] {
 
 export async function POST(
   request: NextRequest
-): Promise<NextResponse<BulkResult | ApiError>> {
+): Promise<Response> {
   try {
     const isAdmin = await verifyAdminSession(request);
     if (!isAdmin) {
