@@ -41,12 +41,11 @@ export function normalizeLeetCodeUsername(raw: string): string {
   return s;
 }
 
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** YYYY-MM-DD for the given instant, in IST (UTC+5:30). */
+/** YYYY-MM-DD for the given instant, matching LeetCode's UTC rollover. */
 export function istDateKey(date: Date = new Date()): string {
-  return new Date(date.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+  return date.toISOString().slice(0, 10);
 }
 
 /** IST date key for `n` days before `from`. */

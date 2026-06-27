@@ -5,8 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { RefreshButton } from '@/components/admin/RefreshButton';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { ChangePinModal } from '@/components/admin/ChangePinModal';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // Cache for 60 seconds to prevent hitting quotas
 
 export default async function AdminDashboard() {
   const classes = await classService.getClasses();
@@ -54,6 +55,7 @@ export default async function AdminDashboard() {
           <Link href="/admin/students" className={buttonVariants()}>
             Manage Students
           </Link>
+          <ChangePinModal />
           <RefreshButton />
         </div>
       </div>

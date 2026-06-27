@@ -55,7 +55,6 @@ export function PinGate() {
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               disabled={loading}
-              maxLength={6}
               aria-invalid={!!error}
               autoFocus
             />

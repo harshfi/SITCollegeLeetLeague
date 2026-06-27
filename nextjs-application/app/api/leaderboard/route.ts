@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getLeaderboard } from '@/lib/services/leaderboardService';
 import { LeaderboardData, TimeWindow, ApiError } from '@/lib/types';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // Cache for 60 seconds to avoid exceeding Firebase quotas
 
 const VALID_WINDOWS: TimeWindow[] = ['all', 'today', 'week', 'date'];
 

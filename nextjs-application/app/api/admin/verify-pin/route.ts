@@ -17,7 +17,24 @@ export async function POST(
       );
     }
 
-    const pinHash = process.env.ADMIN_PIN_HASH;
+    let pinHash = process.env.ADMIN_PIN_HASH;
+    
+    // Fallback: Read directly from .env.local in case process.env is stale (dev server issue)
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const envPath = path.join(process.cwd(), '.env.local');
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        const match = envContent.match(/^ADMIN_PIN_HASH=(.*)$/m);
+        if (match && match[1]) {
+          pinHash = match[1].trim();
+        }
+      }
+    } catch (e) {
+      console.error('Failed to read .env.local directly:', e);
+    }
+
     if (!pinHash) {
       console.error('ADMIN_PIN_HASH not configured');
       return NextResponse.json(

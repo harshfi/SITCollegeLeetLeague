@@ -10,6 +10,8 @@ import { StudentModal } from './StudentModal';
 import { AdminLockButton } from './AdminLockButton';
 import { istDateKey } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const TABS: { key: TimeWindow; label: string }[] = [
   { key: 'all', label: 'All Time' },
@@ -32,19 +34,34 @@ function StatCard({
   icon,
   label,
   children,
+  delay = 0,
 }: {
   icon: string;
   label: string;
   children: React.ReactNode;
+  delay?: number;
 }) {
   return (
-    <div className="rounded-xl bg-card px-5 py-4 ring-1 ring-foreground/10">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ 
+        type: "spring",
+        stiffness: 260,
+        damping: 20,
+        delay 
+      }}
+      whileHover={{ scale: 1.05, translateY: -4 }}
+      whileTap={{ scale: 0.95 }}
+      className="rounded-xl bg-card/80 backdrop-blur-sm px-5 py-4 ring-1 ring-foreground/10 shadow-sm transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:ring-primary/50 relative overflow-hidden group"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         <span>{icon}</span>
         {label}
       </div>
       <div className="mt-2 text-2xl font-bold">{children}</div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -144,18 +161,35 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/70 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold tracking-tight">
-              <span className="text-primary">Leet</span>Code Tracker
-            </h1>
-            <span className="flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+            <motion.img 
+              initial={{ rotate: -180, scale: 0, opacity: 0 }}
+              animate={{ rotate: 0, scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20, duration: 1 }}
+              src="/logo.png" 
+              alt="SIT Logo" 
+              className="h-10 w-auto object-contain drop-shadow-md" 
+            />
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+              className="flex flex-col"
+            >
+              <h1 className="text-xl font-extrabold tracking-tight leading-none bg-clip-text text-transparent bg-gradient-to-r from-primary via-blue-500 to-purple-600 animate-gradient-x">
+                SIT LeetCode Tracker
+              </h1>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mt-1">Sharad Institute of Technology</span>
+            </motion.div>
+            <span className="ml-2 flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary border border-primary/20">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
               {timestamp} IST
             </span>
           </div>
           <nav className="flex items-center gap-1">
+            <ThemeToggle />
             {TABS.map((t) => (
               <button
                 key={t.key}
@@ -183,19 +217,22 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 relative">
+        {/* Decorative background blur */}
+        <div className="absolute top-0 left-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
+
         {/* Stat cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard icon="👥" label="Total Students">
+          <StatCard icon="👥" label="Total Students" delay={0.1}>
             {data.totalStudents}
           </StatCard>
-          <StatCard icon="</>" label="Problems Solved">
+          <StatCard icon="</>" label="Problems Solved" delay={0.2}>
             {(data.problemsSolved || 0).toLocaleString()}
           </StatCard>
-          <StatCard icon="📈" label="Today's Solves">
+          <StatCard icon="📈" label="Today's Solves" delay={0.3}>
             {(data.todaysSolves || 0).toLocaleString()}
           </StatCard>
-          <StatCard icon="🔥" label="Most Active">
+          <StatCard icon="🔥" label="Most Active" delay={0.4}>
             {data.mostActive ? (
               <span className="text-lg">
                 {data.mostActive.name}{' '}
@@ -210,13 +247,30 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
         </div>
 
         {/* Podium */}
-        <Podium rows={data.rows} onSelect={setSelected} showBreakdown={showBreakdown} />
+        <motion.div 
+          initial={{ opacity: 0, y: 50, scale: 0.9 }} 
+          animate={{ opacity: 1, y: 0, scale: 1 }} 
+          transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.3 }}
+        >
+          <Podium rows={data.rows} onSelect={setSelected} showBreakdown={showBreakdown} />
+        </motion.div>
 
         {/* Institute VS */}
-        <InstituteVs institutes={data.institutes} />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, rotateX: -15 }} 
+          animate={{ opacity: 1, scale: 1, rotateX: 0 }} 
+          transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.4 }}
+        >
+          <InstituteVs institutes={data.institutes} />
+        </motion.div>
 
         {/* Leaderboard */}
-        <div className="rounded-xl bg-card ring-1 ring-foreground/10">
+        <motion.div 
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 150, damping: 20, delay: 0.5 }}
+          className="rounded-xl bg-card/90 backdrop-blur shadow-sm ring-1 ring-foreground/10 overflow-hidden"
+        >
           <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-1">
               <FilterTab
@@ -261,7 +315,8 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
                   <SortHeader label="LC Rank" sortKey="ranking" align="right" active={sortKey} dir={sortDir} onSort={handleSort} />
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border/50">
+                <AnimatePresence mode="popLayout">
                 {sorted.length === 0 ? (
                   <tr>
                     <td
@@ -273,10 +328,21 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
                   </tr>
                 ) : (
                   sorted.map((row, idx) => (
-                    <tr
+                    <motion.tr
+                      layout
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ 
+                        type: "spring", 
+                        stiffness: 300, 
+                        damping: 24,
+                        delay: Math.min(idx * 0.05, 0.4) 
+                      }}
+                      whileHover={{ scale: 1.01, backgroundColor: "var(--muted)" }}
                       key={row.studentId}
                       onClick={() => setSelected(row)}
-                      className="cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/50"
+                      className="cursor-pointer transition-colors hover:bg-muted/60"
                     >
                       <td className="px-4 py-3 text-muted-foreground tabular-nums">
                         {idx + 1}
@@ -323,13 +389,14 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
                       <td className="px-4 py-3 text-right text-muted-foreground tabular-nums">
                         {(row.ranking || 0).toLocaleString()}
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))
                 )}
+                </AnimatePresence>
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
       </main>
 
       {selected && (

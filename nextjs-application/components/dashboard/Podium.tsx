@@ -3,6 +3,7 @@
 import { LeaderboardRow } from '@/lib/types';
 import { Avatar } from './Avatar';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 const ICONS = ['🏆', '👑', '🥉']; // for display order [#2, #1, #3]
 
@@ -22,7 +23,16 @@ function PodiumCard({
   onSelect: (r: LeaderboardRow) => void;
 }) {
   return (
-    <button
+    <motion.button
+      initial={{ opacity: 0, y: 50, scale: 0.8 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 200, 
+        damping: 15, 
+        delay: rank === 1 ? 0.3 : (rank === 2 ? 0.4 : 0.5) 
+      }}
+      whileHover={{ scale: 1.05, y: -10 }}
       onClick={() => onSelect(row)}
       className={cn(
         'flex flex-col items-center rounded-xl bg-card px-6 py-5 text-center ring-1 ring-foreground/10 transition-shadow hover:shadow-md',
@@ -54,7 +64,7 @@ function PodiumCard({
         </div>
       )}
       <span className="sr-only">Rank {rank}</span>
-    </button>
+    </motion.button>
   );
 }
 

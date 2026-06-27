@@ -74,16 +74,14 @@ async function graphqlFetch<T>(query: string, variables: Record<string, string>)
   throw new Error('Max retries exceeded');
 }
 
-/** IST day index (days since epoch in IST) for a unix-seconds timestamp. */
+/** Day index (days since epoch in UTC) for a unix-seconds timestamp. */
 function istDayIndex(unixSeconds: number): number {
-  return Math.floor((unixSeconds + IST_OFFSET_SECONDS) / DAY_SECONDS);
+  return Math.floor(unixSeconds / DAY_SECONDS);
 }
 
-/** IST date key (YYYY-MM-DD) for a unix-seconds timestamp. */
+/** Date key (YYYY-MM-DD) for a unix-seconds timestamp in UTC. */
 function istDateStringFromSec(unixSeconds: number): string {
-  return new Date((unixSeconds + IST_OFFSET_SECONDS) * 1000)
-    .toISOString()
-    .slice(0, 10);
+  return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
 }
 
 /**

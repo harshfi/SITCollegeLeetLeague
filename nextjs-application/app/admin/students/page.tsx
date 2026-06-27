@@ -55,6 +55,12 @@ export default function AdminStudentsPage() {
     classId: '',
   });
   const [updating, setUpdating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterClassId, filterErrorsOnly, sortBy, sortOrder]);
 
   async function reloadData() {
     try {
@@ -65,17 +71,21 @@ export default function AdminStudentsPage() {
       setStudents(studentsData);
       setClasses(classesData);
 
-      // Fetch all stats in a single request (keyed by username), instead of one
-      // request per student (which also risks a refetch+write per student).
-      const byUsername: Record<string, StudentStats> = await fetch(
-        '/api/students/stats'
-      ).then((r) => r.json());
-      const newStats: Record<string, StudentStats> = {};
-      for (const student of studentsData as Student[]) {
-        const s = byUsername[student.leetcodeUsername];
-        if (s) newStats[student.id] = s;
+      try {
+        const statsRes = await fetch('/api/student-stats');
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          const newStats: Record<string, StudentStats> = {};
+          studentsData.forEach((student: Student) => {
+            if (statsData.data[student.leetcodeUsername]) {
+              newStats[student.id] = statsData.data[student.leetcodeUsername];
+            }
+          });
+          setStats(newStats);
+        }
+      } catch (err) {
+        console.error('Failed to load stats:', err);
       }
-      setStats(newStats);
     } catch {
       setError('Failed to load data');
     } finally {
@@ -245,6 +255,12 @@ export default function AdminStudentsPage() {
     const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
     return sortOrder === 'asc' ? comparison : -comparison;
   });
+
+  const totalPages = Math.ceil(sortedStudents.length / pageSize);
+  const paginatedStudents = sortedStudents.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const errorCount = Object.values(stats).filter(
     (s) => s.fetchStatus === 'error'
@@ -439,7 +455,7 @@ export default function AdminStudentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedStudents.map((student) => {
+                    {paginatedStudents.map((student) => {
                       const studentClass = classes.find(
                         (c) => c.id === student.classId
                       );
@@ -588,6 +604,32 @@ export default function AdminStudentsPage() {
                 </Table>
               </CardContent>
             </Card>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, sortedStudents.length)} of {sortedStudents.length} students
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

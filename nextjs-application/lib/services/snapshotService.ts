@@ -1,45 +1,37 @@
-import { db } from '@/lib/firebase/admin';
+import { supabase } from '@/lib/supabase/client';
 import { DailySnapshot, StudentStats } from '@/lib/types';
 import { istDateKey } from '@/lib/utils';
 
-const snapshotsRef = () => db.collection('dailySnapshots');
-
-function docId(username: string, date: string): string {
-  return `${username}_${date}`;
-}
-
-/**
- * Records (or overwrites) the day's snapshot of solved totals for a student.
- * Overwriting through the day means the doc holds that day's latest totals.
- */
 export async function writeSnapshot(
-  stats: Pick<
-    StudentStats,
-    'leetcodeUsername' | 'totalSolved' | 'easySolved' | 'mediumSolved' | 'hardSolved'
-  >,
+  stats: Pick<StudentStats, 'leetcodeUsername' | 'totalSolved' | 'easySolved' | 'mediumSolved' | 'hardSolved'>,
   date: string = istDateKey()
 ): Promise<void> {
-  const snapshot: DailySnapshot = {
+  const snapshot = {
     leetcodeUsername: stats.leetcodeUsername,
     date,
     totalSolved: stats.totalSolved,
     easySolved: stats.easySolved,
     mediumSolved: stats.mediumSolved,
     hardSolved: stats.hardSolved,
-    capturedAt: new Date(),
+    capturedAt: new Date().toISOString()
   };
-  await snapshotsRef().doc(docId(stats.leetcodeUsername, date)).set(snapshot);
+  
+  // upsert on multiple columns requires the constraint name or comma separated columns in some versions.
+  // We use `onConflict: 'leetcodeUsername,date'`
+  const { error } = await supabase.from('dailySnapshots').upsert(snapshot, { onConflict: 'leetcodeUsername,date' });
+  if (error) throw error;
 }
 
-/** Returns a map of leetcodeUsername → snapshot for the given IST date key. */
-export async function getSnapshotsForDate(
-  date: string
-): Promise<Map<string, DailySnapshot>> {
+export async function getSnapshotsForDate(date: string): Promise<Map<string, DailySnapshot>> {
   const result = new Map<string, DailySnapshot>();
-  const query = await snapshotsRef().where('date', '==', date).get();
-  for (const doc of query.docs) {
-    const data = doc.data() as DailySnapshot;
-    result.set(data.leetcodeUsername, data);
+  const { data, error } = await supabase.from('dailySnapshots').select('*').eq('date', date);
+  if (error) throw error;
+  
+  for (const d of data) {
+    result.set(d.leetcodeUsername, {
+      ...d,
+      capturedAt: d.capturedAt ? new Date(d.capturedAt) : new Date()
+    } as DailySnapshot);
   }
   return result;
 }

@@ -103,61 +103,87 @@ export async function POST(
       classes.map((c) => [c.name.trim().toLowerCase(), c.id])
     );
 
-    const result: BulkResult = { created: 0, createdClasses: [], failed: [] };
-    let line = looksLikeHeader ? 2 : 1;
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        const send = (data: any) => controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'));
 
-    for (const r of dataRows) {
-      const name = (r[nameIdx] || '').trim();
-      const username = normalizeLeetCodeUsername(r[userIdx] || '');
-      const rollNumber = rollIdx >= 0 ? (r[rollIdx] || '').trim() : '';
-      const classCell = classIdx >= 0 ? (r[classIdx] || '').trim() : '';
-
-      // Resolve the class by name, auto-creating it if it doesn't exist yet.
-      let classId = '';
-      if (classCell) {
-        const key = classCell.toLowerCase();
-        classId = classIdByName.get(key) || '';
-        if (!classId) {
-          try {
-            const created = await classService.createClass({ name: classCell });
-            classId = created.id;
-            classIdByName.set(key, classId);
-            result.createdClasses.push(classCell);
-          } catch {
-            // leave classId empty → the row is reported as failed below
-          }
-        }
-      } else {
-        classId = body.defaultClassId || '';
-      }
-
-      const rowLabel = `${name || '?'} (${username || '?'})`;
-
-      if (!name || !username) {
-        result.failed.push({ line, value: rowLabel, error: 'Missing name or username' });
-      } else if (!classId) {
-        result.failed.push({ line, value: rowLabel, error: 'No class resolved' });
-      } else {
         try {
-          await studentService.createStudent({
-            classId,
-            name,
-            leetcodeUsername: username,
-            ...(rollNumber ? { rollNumber } : {}),
-          });
-          result.created++;
-        } catch (err) {
-          result.failed.push({
-            line,
-            value: rowLabel,
-            error: err instanceof Error ? err.message : 'Unknown error',
-          });
+          const result: BulkResult = { created: 0, createdClasses: [], failed: [] };
+          let line = looksLikeHeader ? 2 : 1;
+          let processed = 0;
+          const total = dataRows.length;
+
+          send({ type: 'progress', processed, total, currentName: '' });
+
+          for (const r of dataRows) {
+            const name = (r[nameIdx] || '').trim();
+            const username = normalizeLeetCodeUsername(r[userIdx] || '');
+            const rollNumber = rollIdx >= 0 ? (r[rollIdx] || '').trim() : '';
+            const classCell = classIdx >= 0 ? (r[classIdx] || '').trim() : '';
+
+            let classId = '';
+            if (classCell) {
+              const key = classCell.toLowerCase();
+              classId = classIdByName.get(key) || '';
+              if (!classId) {
+                try {
+                  const created = await classService.createClass({ name: classCell });
+                  classId = created.id;
+                  classIdByName.set(key, classId);
+                  result.createdClasses.push(classCell);
+                } catch {
+                  // leave classId empty
+                }
+              }
+            } else {
+              classId = body.defaultClassId || '';
+            }
+
+            const rowLabel = `${name || '?'} (${username || '?'})`;
+
+            if (!name || !username) {
+              result.failed.push({ line, value: rowLabel, error: 'Missing name or username' });
+            } else if (!classId) {
+              result.failed.push({ line, value: rowLabel, error: 'No class resolved' });
+            } else {
+              try {
+                await studentService.createStudent({
+                  classId,
+                  name,
+                  leetcodeUsername: username,
+                  ...(rollNumber ? { rollNumber } : {}),
+                });
+                result.created++;
+              } catch (err) {
+                result.failed.push({
+                  line,
+                  value: rowLabel,
+                  error: err instanceof Error ? err.message : 'Unknown error',
+                });
+              }
+            }
+            line++;
+            processed++;
+            send({ type: 'progress', processed, total, currentName: name || username });
+          }
+
+          send({ type: 'complete', result });
+        } catch (error) {
+          send({ type: 'error', error: error instanceof Error ? error.message : 'Unknown error' });
+        } finally {
+          controller.close();
         }
       }
-      line++;
-    }
+    });
 
-    return NextResponse.json(result, { status: 201 });
+    return new Response(stream, { 
+      headers: { 
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      } 
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Bulk import failed:', error);

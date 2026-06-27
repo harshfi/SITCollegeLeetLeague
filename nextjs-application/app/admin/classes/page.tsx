@@ -21,6 +21,7 @@ export default function AdminClassesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '' });
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -41,26 +42,36 @@ export default function AdminClassesPage() {
     fetchClasses();
   }, []);
 
-  async function handleCreateClass(e: React.FormEvent) {
+  async function handleSubmitClass(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError('');
 
     try {
-      const res = await fetch('/api/classes', {
-        method: 'POST',
+      const url = editingClassId ? `/api/classes/${editingClassId}` : '/api/classes';
+      const method = editingClassId ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to create class');
+        throw new Error(data.error || `Failed to ${editingClassId ? 'update' : 'create'} class`);
       }
 
-      const newClass = await res.json();
-      setClasses([...classes, newClass]);
+      const updatedClass = await res.json();
+      
+      if (editingClassId) {
+        setClasses(classes.map(c => c.id === editingClassId ? updatedClass : c));
+      } else {
+        setClasses([...classes, updatedClass]);
+      }
+      
       setFormData({ name: '', description: '' });
+      setEditingClassId(null);
       setShowForm(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -98,7 +109,15 @@ export default function AdminClassesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Manage Classes</h1>
-        <Button onClick={() => setShowForm(!showForm)}>
+        <Button onClick={() => {
+          if (showForm) {
+            setShowForm(false);
+            setEditingClassId(null);
+            setFormData({ name: '', description: '' });
+          } else {
+            setShowForm(true);
+          }
+        }}>
           {showForm ? 'Cancel' : 'Add Class'}
         </Button>
       </div>
@@ -112,7 +131,7 @@ export default function AdminClassesPage() {
       {showForm && (
         <Card>
           <CardContent>
-            <form onSubmit={handleCreateClass} className="space-y-4">
+            <form onSubmit={handleSubmitClass} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="class-name">Class Name</Label>
                 <Input
@@ -137,7 +156,7 @@ export default function AdminClassesPage() {
                 />
               </div>
               <Button type="submit" disabled={saving || !formData.name}>
-                {saving ? 'Creating...' : 'Create Class'}
+                {saving ? 'Saving...' : editingClassId ? 'Update Class' : 'Create Class'}
               </Button>
             </form>
           </CardContent>
@@ -166,7 +185,18 @@ export default function AdminClassesPage() {
                   <TableRow key={cls.id}>
                     <TableCell className="font-medium">{cls.name}</TableCell>
                     <TableCell>{cls.studentCount}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setFormData({ name: cls.name, description: cls.description || '' });
+                          setEditingClassId(cls.id);
+                          setShowForm(true);
+                        }}
+                      >
+                        Edit
+                      </Button>
                       <Button
                         variant="destructive"
                         size="sm"

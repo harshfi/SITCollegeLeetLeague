@@ -1,38 +1,34 @@
-import { db } from '@/lib/firebase/admin';
+import { supabase } from '@/lib/supabase/client';
 import * as statsService from '@/lib/services/statsService';
 import * as studentService from '@/lib/services/studentService';
 import * as snapshotService from '@/lib/services/snapshotService';
 import { fetchMultipleUsersWithRateLimit } from '@/lib/leetcode/rate-limiter';
 import { RefreshJob } from '@/lib/types';
 
-const jobsRef = () => db.collection('refreshJobs');
-
 export async function startRefreshJob(
   usernames: string[],
   classId: string | 'all',
   options: { wait?: boolean } = {}
 ): Promise<string> {
-  const jobRef = await jobsRef().add({
+  const { data, error } = await supabase.from('refreshJobs').insert([{
     classId,
-    triggeredAt: new Date(),
+    triggeredAt: new Date().toISOString(),
     completedAt: null,
     totalStudents: usernames.length,
     processed: 0,
     errors: 0,
-    status: 'running' as const,
+    status: 'running',
     errorMessages: [],
-  });
+  }]).select().single();
 
-  const jobId = jobRef.id;
+  if (error) throw error;
+  const jobId = data.id;
 
   if (options.wait) {
-    // Synchronous run (used by the cron job, where background work would be
-    // killed once the response is sent).
     await processRefreshJob(jobId, usernames);
   } else {
-    // Background run (admin-triggered): returns immediately, UI polls status.
-    processRefreshJob(jobId, usernames).catch((error) => {
-      console.error(`Error in refresh job ${jobId}:`, error);
+    processRefreshJob(jobId, usernames).catch((err) => {
+      console.error(`Error in refresh job ${jobId}:`, err);
     });
   }
 
@@ -43,10 +39,7 @@ async function processRefreshJob(
   jobId: string,
   usernames: string[]
 ): Promise<void> {
-  const jobRef = jobsRef().doc(jobId);
-
   try {
-    // Map usernames → studentId so stats are linked to the right student.
     const students = await studentService.getStudents();
     const studentIdByUsername = new Map(
       students.map((s) => [s.leetcodeUsername, s.id])
@@ -60,7 +53,6 @@ async function processRefreshJob(
       if (result.stats) {
         const studentId = studentIdByUsername.get(result.username) || '';
         await statsService.upsertStats(result.username, result.stats, studentId);
-        // Capture today's snapshot for time-window calculations.
         await snapshotService.writeSnapshot({
           leetcodeUsername: result.username,
           totalSolved: result.stats.totalSolved,
@@ -77,48 +69,41 @@ async function processRefreshJob(
         }
       }
 
-      // Incremental progress so the admin UI can poll a live count.
-      await jobRef.update({ processed, errors, errorMessages });
+      await supabase.from('refreshJobs').update({ processed, errors, errorMessages }).eq('id', jobId);
     });
 
-    await jobRef.update({
+    await supabase.from('refreshJobs').update({
       processed,
       errors,
-      completedAt: new Date(),
+      completedAt: new Date().toISOString(),
       status: errors > 0 ? 'partial' : 'complete',
       errorMessages,
-    });
+    }).eq('id', jobId);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     console.error(`Refresh job ${jobId} failed:`, error);
 
-    await jobRef.update({
+    await supabase.from('refreshJobs').update({
       status: 'partial',
-      completedAt: new Date(),
+      completedAt: new Date().toISOString(),
       errorMessages: [errorMsg],
-    });
+    }).eq('id', jobId);
   }
 }
 
 export async function getRefreshJobStatus(
   jobId: string
 ): Promise<RefreshJob | null> {
-  const snapshot = await jobsRef().doc(jobId).get();
+  const { data, error } = await supabase.from('refreshJobs').select('*').eq('id', jobId).single();
 
-  if (!snapshot.exists) {
-    return null;
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
   }
 
-  const data = snapshot.data()!;
   return {
-    id: snapshot.id,
-    classId: data.classId,
-    triggeredAt: data.triggeredAt?.toDate() || new Date(),
-    completedAt: data.completedAt?.toDate() || undefined,
-    totalStudents: data.totalStudents,
-    processed: data.processed,
-    errors: data.errors,
-    status: data.status,
-    errorMessages: data.errorMessages,
+    ...data,
+    triggeredAt: new Date(data.triggeredAt),
+    completedAt: data.completedAt ? new Date(data.completedAt) : undefined,
   } as RefreshJob;
 }

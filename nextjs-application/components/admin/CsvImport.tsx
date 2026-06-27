@@ -29,6 +29,7 @@ export function CsvImport({
   const [csv, setCsv] = useState('');
   const [defaultClassId, setDefaultClassId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState<{ processed: number; total: number; currentName: string } | null>(null);
   const [result, setResult] = useState<BulkResult | null>(null);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -36,6 +37,7 @@ export function CsvImport({
   function reset() {
     setCsv('');
     setResult(null);
+    setProgress(null);
     setError('');
     setDefaultClassId('');
   }
@@ -50,16 +52,47 @@ export function CsvImport({
     setSubmitting(true);
     setError('');
     setResult(null);
+    setProgress(null);
     try {
       const res = await fetch('/api/students/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ csv, defaultClassId: defaultClassId || undefined }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Import failed');
-      setResult(data as BulkResult);
-      onImported();
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Import failed');
+      }
+      
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('Stream not supported');
+      
+      const decoder = new TextDecoder();
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const msg = JSON.parse(line);
+          
+          if (msg.type === 'progress') {
+            setProgress({ processed: msg.processed, total: msg.total, currentName: msg.currentName });
+          } else if (msg.type === 'complete') {
+            setResult(msg.result);
+            onImported();
+          } else if (msg.type === 'error') {
+            throw new Error(msg.error);
+          }
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed');
     } finally {
@@ -139,6 +172,26 @@ export function CsvImport({
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
+            
+            {progress && !result && (
+              <div className="space-y-2 p-4 rounded-lg border bg-muted/30">
+                <div className="flex justify-between text-sm">
+                  <span>Importing students...</span>
+                  <span className="font-mono">{progress.processed} / {progress.total}</span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="bg-primary h-full transition-all duration-300" 
+                    style={{ width: `${progress.total > 0 ? (progress.processed / progress.total) * 100 : 0}%` }} 
+                  />
+                </div>
+                {progress.currentName && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    Currently importing: {progress.currentName}
+                  </p>
+                )}
+              </div>
+            )}
 
             {result && (
               <div className="rounded-lg border border-border p-3 text-sm space-y-2">
