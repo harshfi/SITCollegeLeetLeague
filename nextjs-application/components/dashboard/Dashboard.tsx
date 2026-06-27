@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LeaderboardData, LeaderboardRow, TimeWindow } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Avatar } from './Avatar';
@@ -68,7 +68,18 @@ export function Dashboard({ initial }: { initial: LeaderboardData }) {
     }
   }
 
+  // Skip the first fetch: the server already rendered with `initial` for this
+  // window, so refetching it on mount just doubles the DB read.
+  const firstRun = useRef(true);
+
   useEffect(() => {
+    const initialKey = `${initial.window}|${initial.date || ''}`;
+    const currentKey = `${windowSel}|${windowSel === 'date' ? dateSel : ''}`;
+    if (firstRun.current) {
+      firstRun.current = false;
+      if (currentKey === initialKey) return;
+    }
+
     const controller = new AbortController();
     async function load() {
       setLoading(true);

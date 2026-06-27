@@ -65,23 +65,16 @@ export default function AdminStudentsPage() {
       setStudents(studentsData);
       setClasses(classesData);
 
-      // Fetch stats for all students
+      // Fetch all stats in a single request (keyed by username), instead of one
+      // request per student (which also risks a refetch+write per student).
+      const byUsername: Record<string, StudentStats> = await fetch(
+        '/api/students/stats'
+      ).then((r) => r.json());
       const newStats: Record<string, StudentStats> = {};
-      await Promise.all(
-        studentsData.map(async (student: Student) => {
-          try {
-            const res = await fetch(
-              `/api/student-stats/${student.leetcodeUsername}`
-            );
-            if (res.ok) {
-              const data = await res.json();
-              newStats[student.id] = data.data;
-            }
-          } catch {
-            // ignore
-          }
-        })
-      );
+      for (const student of studentsData as Student[]) {
+        const s = byUsername[student.leetcodeUsername];
+        if (s) newStats[student.id] = s;
+      }
       setStats(newStats);
     } catch {
       setError('Failed to load data');

@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import * as studentService from './studentService';
 import * as statsService from './statsService';
 import * as classService from './classService';
@@ -22,7 +23,7 @@ function solvesInWindow(
   return weekKeys.reduce((sum, k) => sum + (cal[k] || 0), 0);
 }
 
-export async function getLeaderboard(
+async function computeLeaderboard(
   window: TimeWindow,
   dateStr?: string
 ): Promise<LeaderboardData> {
@@ -127,3 +128,16 @@ export async function getLeaderboard(
     institutes,
   };
 }
+
+/**
+ * Cached leaderboard. The underlying data only changes when stats are refreshed
+ * (daily cron / manual refresh), so caching the computed result avoids re-scanning
+ * the students + studentStats collections on every page load and tab switch.
+ * Cache key includes the (window, date) arguments. Self-heals on the 300s TTL,
+ * so fresh data appears within ~5 min of a refresh.
+ */
+export const getLeaderboard = unstable_cache(
+  computeLeaderboard,
+  ['leaderboard'],
+  { revalidate: 300, tags: ['leaderboard'] }
+);

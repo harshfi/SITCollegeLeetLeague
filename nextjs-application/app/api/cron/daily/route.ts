@@ -27,6 +27,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     const jobId = await startRefreshJob(usernames, 'all', { wait: true });
+    // The leaderboard cache (300s TTL) self-heals shortly after this refresh.
     return NextResponse.json({ status: 'complete', jobId, count: usernames.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
