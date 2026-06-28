@@ -76,11 +76,14 @@ export default async function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {classes.slice(0, 6).map((cls) => (
               <Card key={cls.id}>
-                <CardContent>
-                  <h3 className="font-semibold">{cls.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {cls.studentCount} students
-                  </p>
+                <CardContent className="flex flex-col justify-between h-full pt-6">
+                  <div>
+                    <h3 className="font-semibold text-lg">{cls.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-1 mb-4">
+                      {cls.studentCount} students
+                    </p>
+                  </div>
+                  <RefreshButton classId={cls.id} />
                 </CardContent>
               </Card>
             ))}

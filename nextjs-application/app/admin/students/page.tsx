@@ -44,6 +44,7 @@ export default function AdminStudentsPage() {
   const [saving, setSaving] = useState(false);
   const [filterClassId, setFilterClassId] = useState('all');
   const [filterErrorsOnly, setFilterErrorsOnly] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -60,7 +61,7 @@ export default function AdminStudentsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterClassId, filterErrorsOnly, sortBy, sortOrder]);
+  }, [filterClassId, filterErrorsOnly, sortBy, sortOrder, searchQuery]);
 
   async function reloadData() {
     try {
@@ -223,6 +224,15 @@ export default function AdminStudentsPage() {
 
   const filteredStudents = students
     .filter((s) => (filterClassId !== 'all' ? s.classId === filterClassId : true))
+    .filter((s) => {
+      if (!searchQuery) return true;
+      const lower = searchQuery.toLowerCase();
+      return (
+        s.name.toLowerCase().includes(lower) ||
+        s.leetcodeUsername.toLowerCase().includes(lower) ||
+        (s.rollNumber && s.rollNumber.toLowerCase().includes(lower))
+      );
+    })
     .filter((s) => {
       if (!filterErrorsOnly) return true;
       const studentStats = stats[s.id];
@@ -408,8 +418,17 @@ export default function AdminStudentsPage() {
           </Card>
         ) : (
           <>
-            <div className="flex gap-4 items-end">
-              <div className="space-y-2 max-w-xs">
+            <div className="flex gap-4 items-end flex-wrap">
+              <div className="space-y-2 flex-1 min-w-[200px] max-w-xs">
+                <Label>Search Students</Label>
+                <Input
+                  placeholder="Search name, username, roll number..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2 max-w-xs min-w-[150px]">
                 <Label>Filter by Class</Label>
                 <Select
                   value={filterClassId}
