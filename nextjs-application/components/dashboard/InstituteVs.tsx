@@ -71,7 +71,7 @@ export function InstituteVs({ institutes }: { institutes: InstituteSummary[] }) 
             }}
           >
             <SelectTrigger className="w-auto min-w-[140px] h-8 bg-transparent font-semibold p-2 shadow-sm rounded-md">
-              <SelectValue placeholder={a.name} />
+              <SelectValue>{a.name}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {sorted.map((cls) => (
@@ -98,7 +98,7 @@ export function InstituteVs({ institutes }: { institutes: InstituteSummary[] }) 
             }}
           >
             <SelectTrigger className="w-auto min-w-[140px] h-8 bg-transparent font-semibold p-2 shadow-sm rounded-md text-right [&>span]:w-full [&>span]:text-right flex-row-reverse">
-              <SelectValue placeholder={b.name} />
+              <SelectValue>{b.name}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {sorted.map((cls) => (
