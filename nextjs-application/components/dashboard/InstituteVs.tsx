@@ -42,16 +42,16 @@ export function InstituteVs({ institutes }: { institutes: InstituteSummary[] }) 
   const sorted = [...institutes].sort((x, y) => y.memberCount - x.memberCount);
   
   // Initialize directly with the top 2 classes so they are selected by default on load
-  const [selectedAId, setSelectedAId] = useState<string | null>(sorted[0]?.id || null);
-  const [selectedBId, setSelectedBId] = useState<string | null>(sorted[1]?.id || null);
+  const [selectedAId, setSelectedAId] = useState<string | null>(sorted[0]?.classId || null);
+  const [selectedBId, setSelectedBId] = useState<string | null>(sorted[1]?.classId || null);
 
   if (sorted.length < 2) return null;
 
-  const aId = selectedAId || sorted[0].id;
-  const bId = selectedBId || sorted[1].id;
+  const aId = selectedAId || sorted[0].classId;
+  const bId = selectedBId || sorted[1].classId;
 
-  const a = sorted.find((i) => i.id === aId) || sorted[0];
-  const b = sorted.find((i) => i.id === bId) || sorted[1];
+  const a = sorted.find((i) => i.classId === aId) || sorted[0];
+  const b = sorted.find((i) => i.classId === bId) || sorted[1];
 
   const diff = Math.abs(a.allTime - b.allTime);
   const leader = a.allTime >= b.allTime ? a : b;
@@ -62,10 +62,10 @@ export function InstituteVs({ institutes }: { institutes: InstituteSummary[] }) 
         <div className="flex items-center gap-2 w-full md:w-auto">
           <span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0" />
           <Select 
-            value={a.id} 
+            value={a.classId} 
             onValueChange={(val) => {
-              if (val === b.id) {
-                setSelectedBId(a.id); // Swap if selecting the same class
+              if (val === b.classId) {
+                setSelectedBId(a.classId); // Swap if selecting the same class
               }
               setSelectedAId(val);
             }}
@@ -75,7 +75,7 @@ export function InstituteVs({ institutes }: { institutes: InstituteSummary[] }) 
             </SelectTrigger>
             <SelectContent>
               {sorted.map((cls) => (
-                <SelectItem key={cls.id} value={cls.id}>
+                <SelectItem key={cls.classId} value={cls.classId}>
                   {cls.name}
                 </SelectItem>
               ))}
@@ -89,10 +89,10 @@ export function InstituteVs({ institutes }: { institutes: InstituteSummary[] }) 
         <div className="flex items-center gap-2 w-full md:w-auto md:justify-end">
           <span className="text-muted-foreground whitespace-nowrap text-xs text-right flex-1 md:flex-none">{b.memberCount} members</span>
           <Select 
-            value={b.id} 
+            value={b.classId} 
             onValueChange={(val) => {
-              if (val === a.id) {
-                setSelectedAId(b.id); // Swap if selecting the same class
+              if (val === a.classId) {
+                setSelectedAId(b.classId); // Swap if selecting the same class
               }
               setSelectedBId(val);
             }}
@@ -102,7 +102,7 @@ export function InstituteVs({ institutes }: { institutes: InstituteSummary[] }) 
             </SelectTrigger>
             <SelectContent>
               {sorted.map((cls) => (
-                <SelectItem key={cls.id} value={cls.id}>
+                <SelectItem key={cls.classId} value={cls.classId}>
                   {cls.name}
                 </SelectItem>
               ))}
