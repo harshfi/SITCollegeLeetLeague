@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import * as classService from '@/lib/services/classService';
 import * as studentService from '@/lib/services/studentService';
 import { Class, UpdateClassRequest, ApiError } from '@/lib/types';
@@ -104,6 +105,9 @@ export async function DELETE(
 
     // Delete the class
     await classService.deleteClass(classId);
+
+    // Revalidate the public leaderboard cache to instantly remove the class
+    revalidateTag('leaderboard');
 
     return NextResponse.json({ success: true });
   } catch (error) {
